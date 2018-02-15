@@ -2,6 +2,8 @@ Name
 ---
 lua-resty-ip2location - A Lua library for reading [ip2location's Geolocation database format](https://ip2location.github.io/ip2location-DB/)  (aka mmdb or geoip2).
 
+A Lua library for reading http://www.ip2location.com Geolocation database
+
 Installation
 ---
 ```bash
