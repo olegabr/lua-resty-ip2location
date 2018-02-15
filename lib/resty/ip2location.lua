@@ -196,13 +196,13 @@ function _M.new(ip2location_country_geolite2_file, access_type)
   return setmetatable({ ip2location=ip2location }, mt)
 end
 
-function _M.close()
+function _M:close()
   IP2LOCATION.IP2Location_close(self.ip2location)
   IP2LOCATION.IP2Location_DB_del_shm()
 end
 
 -- returns a record object. free it with close_lookup call
-function _M.lookup(ip)
+function _M:lookup(ip)
   local record = IP2LOCATION.IP2Location_get_all(self.ip2location, ip)
 
   if not record then
@@ -213,7 +213,7 @@ function _M.lookup(ip)
   --return json_decode(table.concat(record)),nil
 end
 
-function _M2.close()
+function _M2:close()
   IP2LOCATION.IP2Location_free_record(self.record)
 end
 
