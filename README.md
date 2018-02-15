@@ -11,16 +11,17 @@ opm get olegabr/lua-resty-ip2location
 Synopsis
 ---
 ```
-  local geo = require 'resty.ip2location'
+  local ip2location = require 'resty.ip2location'
+  local cjson = require('cjson') 
 
-  -- geo.IP2LOCATION_FILE_IO and geo.IP2LOCATION_CACHE_MEMORY are also available
-  local ip2location = geo.new("/usr/share/ip2location/IPV6-COUNTRY.BIN", geo.IP2LOCATION_SHARED_MEMORY)
+  -- ip2location.IP2LOCATION_FILE_IO and ip2location.IP2LOCATION_CACHE_MEMORY are also available
+  local ip2loc = ip2location.new("/usr/share/ip2location/IPV6-COUNTRY.BIN", ip2location.IP2LOCATION_SHARED_MEMORY)
 
   --support ipv6 e.g. 2001:4860:0:1001::3004:ef68
-  local record,err = ip2location:lookup(ngx.var.arg_ip or ngx.var.remote_addr)
+  local record,err = ip2loc:lookup(ngx.var.arg_ip or ngx.var.remote_addr)
   if not record then 
     ngx.log(ngx.ERR,'failed to lookup by ip ,reason:',err)
-    ip2location:close()
+    ip2loc:close()
     return
   end
 
@@ -28,106 +29,41 @@ Synopsis
   if ngx.var.arg_node then
     ngx.say("node name:",ngx.var.arg_node," ,value:", cjson.encode(record[ngx.var.arg_node] or {}))
   end
-  record:close()
-  ip2location:close()
+  ip2loc:close()
 ```
 
 ```bash
   #ipv4
-  $ curl localhost/ip=114.114.114.114&node=city
+  $ curl 'http://localhost?ip=114.114.114.114&node=country_long'
   #ipv6
-  #$ curl localhost/ip=2001:4860:0:1001::3004:ef68&node=country
-  full :{"city":{"geoname_id":1799962,"names":{"en":"Nanjing","ru":"Нанкин","fr":"Nankin","pt-BR":"Nanquim","zh-CN":"南京","es":"Nankín","de":"Nanjing","ja":"南京市"}},"subdivisions":[{"geoname_id":1806260,"names":{"en":"Jiangsu","fr":"Province de Jiangsu","zh-CN":"江苏省"},"iso_code":"32"}],"country":{"geoname_id":1814991,"names":{"en":"China","ru":"Китай","fr":"Chine","pt-BR":"China","zh-CN":"中国","es":"China","de":"China","ja":"中国"},"iso_code":"CN"},"registered_country":{"geoname_id":1814991,"names":{"en":"China","ru":"Китай","fr":"Chine","pt-BR":"China","zh-CN":"中国","es":"China","de":"China","ja":"中国"},"iso_code":"CN"},"location":{"time_zone":"Asia\/Shanghai","longitude":118.7778,"accuracy_radius":50,"latitude":32.0617},"continent":{"geoname_id":6255147,"names":{"en":"Asia","ru":"Азия","fr":"Asie","pt-BR":"Ásia","zh-CN":"亚洲","es":"Asia","de":"Asien","ja":"アジア"},"code":"AS"}}
-  node name:city ,value:{"geoname_id":1799962,"names":{"en":"Nanjing","ru":"Нанкин","fr":"Nankin","pt-BR":"Nanquim","zh-CN":"南京","es":"Nankín","de":"Nanjing","ja":"南京市"}}
+  #$ curl 'http://localhost?ip=2001:4860:0:1001::3004:ef68&node=country_long'
+  full :{"domain":"This parameter is unavailable for selected data file. Please upgrade the data file.","longitude":0,"latitude":0,"mnc":"This parameter is unavailable for selected data file. Please upgrade the data file.","areacode":"This parameter is unavailable for selected data file. Please upgrade the data file.","weatherstationcode":"This parameter is unavailable for selected data file. Please upgrade the data file.","city":"This parameter is unavailable for selected data file. Please upgrade the data file.","timezone":"This parameter is unavailable for selected data file. Please upgrade the data file.","mcc":"This parameter is unavailable for selected data file. Please upgrade the data file.","isp":"This parameter is unavailable for selected data file. Please upgrade the data file.","region":"This parameter is unavailable for selected data file. Please upgrade the data file.","elevation":0,"zipcode":"This parameter is unavailable for selected data file. Please upgrade the data file.","mobilebrand":"This parameter is unavailable for selected data file. Please upgrade the data file.","netspeed":"This parameter is unavailable for selected data file. Please upgrade the data file.","country_long":"China","country_short":"CN","iddcode":"This parameter is unavailable for selected data file. Please upgrade the data file.","weatherstationname":"This parameter is unavailable for selected data file. Please upgrade the data file.","usagetype":"This parameter is unavailable for selected data file. Please upgrade the data file."}
+ node name:country_long ,value:"China"
 ```
 
 prettify
 ```json
-full: {
-    "city": {
-        "geoname_id": 1799962,
-        "names": {
-            "en": "Nanjing",
-            "ru": "Нанкин",
-            "fr": "Nankin",
-            "pt-BR": "Nanquim",
-            "zh-CN": "南京",
-            "es": "Nankín",
-            "de": "Nanjing",
-            "ja": "南京市"
-        }
-    },
-    "subdivisions": [{
-            "geoname_id": 1806260,
-            "names": {
-                "en": "Jiangsu",
-                "fr": "Province de Jiangsu",
-                "zh-CN": "江苏省"
-            },
-            "iso_code": "32"
-        }
-    ],
-    "country": {
-        "geoname_id": 1814991,
-        "names": {
-            "en": "China",
-            "ru": "Китай",
-            "fr": "Chine",
-            "pt-BR": "China",
-            "zh-CN": "中国",
-            "es": "China",
-            "de": "China",
-            "ja": "中国"
-        },
-        "iso_code": "CN"
-    },
-    "registered_country": {
-        "geoname_id": 1814991,
-        "names": {
-            "en": "China",
-            "ru": "Китай",
-            "fr": "Chine",
-            "pt-BR": "China",
-            "zh-CN": "中国",
-            "es": "China",
-            "de": "China",
-            "ja": "中国"
-        },
-        "iso_code": "CN"
-    },
-    "location": {
-        "time_zone": "Asia\/Shanghai",
-        "longitude": 118.7778,
-        "accuracy_radius": 50,
-        "latitude": 32.0617
-    },
-    "continent": {
-        "geoname_id": 6255147,
-        "names": {
-            "en": "Asia",
-            "ru": "Азия",
-            "fr": "Asie",
-            "pt-BR": "Ásia",
-            "zh-CN": "亚洲",
-            "es": "Asia",
-            "de": "Asien",
-            "ja": "アジア"
-        },
-        "code": "AS"
-    }
-}
-node name: city, value: {
-    "geoname_id": 1799962,
-    "names": {
-        "en": "Nanjing",
-        "ru": "Нанкин",
-        "fr": "Nankin",
-        "pt-BR": "Nanquim",
-        "zh-CN": "南京",
-        "es": "Nankín",
-        "de": "Nanjing",
-        "ja": "南京市"
-    }
+{
+	"domain": "This parameter is unavailable for selected data file. Please upgrade the data file.",
+	"longitude": 0,
+	"latitude": 0,
+	"mnc": "This parameter is unavailable for selected data file. Please upgrade the data file.",
+	"areacode": "This parameter is unavailable for selected data file. Please upgrade the data file.",
+	"weatherstationcode": "This parameter is unavailable for selected data file. Please upgrade the data file.",
+	"city": "This parameter is unavailable for selected data file. Please upgrade the data file.",
+	"timezone": "This parameter is unavailable for selected data file. Please upgrade the data file.",
+	"mcc": "This parameter is unavailable for selected data file. Please upgrade the data file.",
+	"isp": "This parameter is unavailable for selected data file. Please upgrade the data file.",
+	"region": "This parameter is unavailable for selected data file. Please upgrade the data file.",
+	"elevation": 0,
+	"zipcode": "This parameter is unavailable for selected data file. Please upgrade the data file.",
+	"mobilebrand": "This parameter is unavailable for selected data file. Please upgrade the data file.",
+	"netspeed": "This parameter is unavailable for selected data file. Please upgrade the data file.",
+	"country_long": "China",
+	"country_short": "CN",
+	"iddcode": "This parameter is unavailable for selected data file. Please upgrade the data file.",
+	"weatherstationname": "This parameter is unavailable for selected data file. Please upgrade the data file.",
+	"usagetype": "This parameter is unavailable for selected data file. Please upgrade the data file."
 }
 
 ```

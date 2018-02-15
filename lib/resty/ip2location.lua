@@ -17,12 +17,8 @@ local ffi_cast            = ffi.cast
 
 -- for ip2location handle
 local _M    ={}
-_M._VERSION = '0.0.4'
+_M._VERSION = '0.0.5'
 local mt = { __index = _M }
-
--- for record
-local _M2    ={}
-local mt2 = { __index = _M2 }
 
 ffi.cdef[[
 
@@ -139,35 +135,12 @@ char *IP2Location_lib_version_string(void);
 
 ]]
 
--- fields
--- https://github.com/chrislim2888/IP2Location-C-Library/blob/master/libIP2Location/IP2Location.h#L72
-local IP2LOCATION_COUNTRYSHORT         = 0x00001
-local IP2LOCATION_COUNTRYLONG          = 0x00002
-local IP2LOCATION_REGION               = 0x00004
-local IP2LOCATION_CITY                 = 0x00008
-local IP2LOCATION_ISP                  = 0x00010
-local IP2LOCATION_LATITUDE             = 0x00020
-local IP2LOCATION_LONGITUDE            = 0x00040
-local IP2LOCATION_DOMAIN_              = 0x00080 -- DOMAIN is a math.h macro
-local IP2LOCATION_ZIPCODE              = 0x00100
-local IP2LOCATION_TIMEZONE             = 0x00200
-local IP2LOCATION_NETSPEED             = 0x00400
-local IP2LOCATION_IDDCODE              = 0x00800
-local IP2LOCATION_AREACODE             = 0x01000
-local IP2LOCATION_WEATHERSTATIONCODE   = 0x02000
-local IP2LOCATION_WEATHERSTATIONNAME   = 0x04000
-local IP2LOCATION_MCC                  = 0x08000
-local IP2LOCATION_MNC                  = 0x10000
-local IP2LOCATION_MOBILEBRAND          = 0x20000
-local IP2LOCATION_ELEVATION            = 0x40000
-local IP2LOCATION_USAGETYPE            = 0x80000
-
-local IP2LOCATION_ALL = 0xfffff
-
 
 -- you should install the libIP2Location to your system
-local IP2LOCATION = ffi.load('libIP2Location.so')
 -- https://github.com/chrislim2888/IP2Location-C-Library
+-- add /usr/local/lib/ to the LD_LIBRARY_PATH if needed:
+-- export LD_LIBRARY_PATH=/usr/local/lib/:$LD_LIBRARY_PATH
+local IP2LOCATION = ffi.load('libIP2Location.so')
 
 -- access_type
 _M.IP2LOCATION_FILE_IO = IP2LOCATION.IP2LOCATION_FILE_IO
@@ -176,45 +149,75 @@ _M.IP2LOCATION_CACHE_MEMORY = IP2LOCATION.IP2LOCATION_CACHE_MEMORY
 _M.IP2LOCATION_SHARED_MEMORY = IP2LOCATION.IP2LOCATION_SHARED_MEMORY
 
 
--- returns a ip2location object. free it with close call
-function _M.new(ip2location_country_geolite2_file, access_type)
+-- returns an ip2location object. free it with close call
+function _M.new(ip2location_db_file, access_type)
    
-  local file_name_ip2 = ffi_new('char[?]',#ip2location_country_geolite2_file,ip2location_country_geolite2_file)
-  local ip2location = IP2LOCATION.IP2Location_open(ffi_cast('char * ', file_name_ip2))
+  local file_name = ffi_new('char[?]',#ip2location_db_file,ip2location_db_file)
+  local ip2location = IP2LOCATION.IP2Location_open(ffi_cast('char * ', file_name))
   if not ip2location then
-      ngx_log(ngx_ERR, "can not open database file: ", ip2location_country_geolite2_file)
-      return nil, "can not open database file: " .. ip2location_country_geolite2_file
+      ngx_log(ngx_ERR, "can not open database file: ", ip2location_db_file)
+      return nil, "can not open database file: " .. ip2location_db_file
   end
   if nil == access_type then
+    -- set default value
     access_type = _M.IP2LOCATION_SHARED_MEMORY
   end
   if IP2LOCATION.IP2Location_open_mem(ip2location, access_type) == -1 then
     IP2LOCATION.IP2Location_close(ip2location)
-    ngx_log(ngx_ERR, "can not open database file: ", ip2location_country_geolite2_file, ", access type: ", access_type)
-    return nil, "can not open database file: " .. ip2location_country_geolite2_file .. ", access type: " .. access_type
+    ngx_log(ngx_ERR, "can not open database file: ", ip2location_db_file, ", access type: ", access_type)
+    return nil, "can not open database file: " .. ip2location_db_file .. ", access type: " .. access_type
   end
-  return setmetatable({ ip2location=ip2location }, mt)
+  return setmetatable({ ip2location=ip2location, records={} }, mt)
 end
 
 function _M:close()
+  -- cleanup records
+  for _,record in ipairs(self.records) do
+    IP2LOCATION.IP2Location_free_record(record)
+  end
+  self.records = {}
+
   IP2LOCATION.IP2Location_close(self.ip2location)
   IP2LOCATION.IP2Location_DB_del_shm()
 end
 
--- returns a record object. free it with close_lookup call
+-- returns a record object
 function _M:lookup(ip)
-  local record = IP2LOCATION.IP2Location_get_all(self.ip2location, ffi_cast('char * ', ip))
+  if not ip then
+    return nil, "no ip provided"
+  end
+  
+  local r = IP2LOCATION.IP2Location_get_all(self.ip2location, ffi_cast('char * ', ip))
 
-  if not record then
+  if not r then
     return nil, "no result found"
   end
   
-  return setmetatable({ record=record }, mt2), nil
-  --return json_decode(table.concat(record)),nil
-end
-
-function _M2:close()
-  IP2LOCATION.IP2Location_free_record(self.record)
+  -- save handle to clear it in close function
+  table.insert(self.records, r)
+  
+  return {
+    country_short= ffi.string(r.country_short),
+    country_long= ffi.string(r.country_long),
+    region= ffi.string(r.region),
+    city= ffi.string(r.city),
+    isp= ffi.string(r.isp),
+    latitude= r.latitude,
+    longitude= r.longitude,
+    domain= ffi.string(r.domain),
+    zipcode= ffi.string(r.zipcode),
+    timezone= ffi.string(r.timezone),
+    netspeed= ffi.string(r.netspeed),
+    iddcode= ffi.string(r.iddcode),
+    areacode= ffi.string(r.areacode),
+    weatherstationcode= ffi.string(r.weatherstationcode),
+    weatherstationname= ffi.string(r.weatherstationname),
+    mcc= ffi.string(r.mcc),
+    mnc= ffi.string(r.mnc),
+    mobilebrand= ffi.string(r.mobilebrand),
+    elevation= r.elevation,
+    usagetype= ffi.string(r.usagetype)
+  }, nil
 end
 
 return _M
