@@ -15,314 +15,202 @@ local ffi_new             = ffi.new
 local ffi_str             = ffi.string
 local ffi_cast            = ffi.cast
 
+-- for ip2location handle
 local _M    ={}
 _M._VERSION = '0.01'
 local mt = { __index = _M }
 
+-- for record
+local _M2    ={}
+local mt2 = { __index = _M2 }
+
 ffi.cdef[[
 
-typedef unsigned int mmdb_uint128_t __attribute__ ((__mode__(TI)));
+/* https://github.com/chrislim2888/IP2Location-C-Library/blob/master/libIP2Location/IP2Loc_DBInterface.h#L17 */
+enum IP2Location_mem_type
+{
+    IP2LOCATION_FILE_IO,
+    IP2LOCATION_CACHE_MEMORY,
+    IP2LOCATION_SHARED_MEMORY
+};
 
-typedef struct MMDB_entry_s {
-  struct MMDB_s *mmdb;
-  uint32_t offset;
-} MMDB_entry_s;
+struct in6_addr_local
+{
+    union
+    {
+        uint8_t addr8[16];
+        uint8_t addr16[8];
+    } u;
+};
 
-typedef struct MMDB_lookup_result_s {
-  bool found_entry;
-  MMDB_entry_s entry;
-  uint16_t netmask;
-} MMDB_lookup_result_s;
 
-typedef struct MMDB_entry_data_s {
-  bool has_data;
-  union {
-    uint32_t pointer;
-    const char *utf8_string;
-    double double_value;
-    const uint8_t *bytes;
-    uint16_t uint16;
-    uint32_t uint32;
-    int32_t int32;
-    uint64_t uint64;
-    mmdb_uint128_t uint128;
-    bool boolean;
-    float float_value;
-  };
+/* All below function are private function IP2Location library */
+struct in6_addr_local IP2Location_readIPv6Address(FILE *handle, uint32_t position);
+uint32_t IP2Location_read32(FILE *handle, uint32_t position);
+uint8_t IP2Location_read8(FILE *handle, uint32_t position);
+char *IP2Location_readStr(FILE *handle, uint32_t position);
+float IP2Location_readFloat(FILE *handle, uint32_t position);
+int32_t IP2Location_DB_set_file_io();
+int32_t IP2Location_DB_set_memory_cache(FILE *filehandle);
+int32_t IP2Location_DB_set_shared_memory(FILE *filehandle);
+int32_t IP2Location_DB_close(FILE *filehandle);
+void IP2Location_DB_del_shm();
 
-  uint32_t offset;
-  uint32_t offset_to_next;
-  uint32_t data_size;
-  uint32_t type;
-} MMDB_entry_data_s;
+/* https://github.com/chrislim2888/IP2Location-C-Library/blob/master/libIP2Location/IP2Location.h#L105 */
+typedef struct
+{
+    FILE *filehandle;
+    uint8_t databasetype;
+    uint8_t databasecolumn;
+    uint8_t databaseday;
+    uint8_t databasemonth;
+    uint8_t databaseyear;
+    uint32_t databasecount;
+    uint32_t databaseaddr;
+    uint32_t ipversion;
+    uint32_t ipv4databasecount;
+    uint32_t ipv4databaseaddr;
+    uint32_t ipv6databasecount;
+    uint32_t ipv6databaseaddr;
+    uint32_t ipv4indexbaseaddr;
+    uint32_t ipv6indexbaseaddr;
+} IP2Location;
 
-typedef struct MMDB_entry_data_list_s {
-  MMDB_entry_data_s entry_data;
-  struct MMDB_entry_data_list_s *next;
-} MMDB_entry_data_list_s;
+typedef struct
+{
+    char *country_short;
+    char *country_long;
+    char *region;
+    char *city;
+    char *isp;
+    float latitude;
+    float longitude;
+    char *domain;
+    char *zipcode;
+    char *timezone;
+    char *netspeed;
+    char *iddcode;
+    char *areacode;
+    char *weatherstationcode;
+    char *weatherstationname;
+    char *mcc;
+    char *mnc;
+    char *mobilebrand;
+    float elevation;
+    char *usagetype;
+} IP2LocationRecord;
 
-typedef struct MMDB_description_s {
-  const char *language;
-  const char *description;
-} MMDB_description_s;
+/*##################
+# Public Functions
+##################*/
+IP2Location *IP2Location_open(char *db);
+int IP2Location_open_mem(IP2Location *loc, enum IP2Location_mem_type);
+uint32_t IP2Location_close(IP2Location *loc);
+IP2LocationRecord *IP2Location_get_country_short(IP2Location *loc, char *ip);
+IP2LocationRecord *IP2Location_get_country_long(IP2Location *loc, char *ip);
+IP2LocationRecord *IP2Location_get_region(IP2Location *loc, char *ip);
+IP2LocationRecord *IP2Location_get_city (IP2Location *loc, char *ip);
+IP2LocationRecord *IP2Location_get_isp(IP2Location *loc, char *ip);
+IP2LocationRecord *IP2Location_get_latitude(IP2Location *loc, char *ip);
+IP2LocationRecord *IP2Location_get_longitude(IP2Location *loc, char *ip);
+IP2LocationRecord *IP2Location_get_domain(IP2Location *loc, char *ip);
+IP2LocationRecord *IP2Location_get_zipcode(IP2Location *loc, char *ip);
+IP2LocationRecord *IP2Location_get_timezone(IP2Location *loc, char *ip);
+IP2LocationRecord *IP2Location_get_netspeed(IP2Location *loc, char *ip);
+IP2LocationRecord *IP2Location_get_iddcode(IP2Location *loc, char *ip);
+IP2LocationRecord *IP2Location_get_areacode(IP2Location *loc, char *ip);
+IP2LocationRecord *IP2Location_get_weatherstationcode(IP2Location *loc, char *ip);
+IP2LocationRecord *IP2Location_get_weatherstationname(IP2Location *loc, char *ip);
+IP2LocationRecord *IP2Location_get_mcc(IP2Location *loc, char *ip);
+IP2LocationRecord *IP2Location_get_mnc(IP2Location *loc, char *ip);
+IP2LocationRecord *IP2Location_get_mobilebrand(IP2Location *loc, char *ip);
+IP2LocationRecord *IP2Location_get_elevation(IP2Location *loc, char *ip);
+IP2LocationRecord *IP2Location_get_usagetype(IP2Location *loc, char *ip);
+IP2LocationRecord *IP2Location_get_all(IP2Location *loc, char *ip);
+void IP2Location_free_record(IP2LocationRecord *record);
+void IP2Location_delete_shm();
+unsigned long int IP2Location_api_version_num(void);
+char *IP2Location_api_version_string(void);
+char *IP2Location_lib_version_string(void);
 
-typedef struct MMDB_metadata_s {
-  uint32_t node_count;
-  uint16_t record_size;
-  uint16_t ip_version;
-  const char *database_type;
-  struct {
-    size_t count;
-    const char **names;
-  } languages;
-  uint16_t binary_format_major_version;
-  uint16_t binary_format_minor_version;
-  uint64_t build_epoch;
-  struct {
-    size_t count;
-    MMDB_description_s **descriptions;
-  } description;
-} MMDB_metadata_s;
-
-typedef struct MMDB_ipv4_start_node_s {
-  uint16_t netmask;
-  uint32_t node_value;
-} MMDB_ipv4_start_node_s;
-
-typedef struct MMDB_s {
-  uint32_t flags;
-  const char *filename;
-  ssize_t file_size;
-  const uint8_t *file_content;
-  const uint8_t *data_section;
-  uint32_t data_section_size;
-  const uint8_t *metadata_section;
-  uint32_t metadata_section_size;
-  uint16_t full_record_byte_size;
-  uint16_t depth;
-  MMDB_ipv4_start_node_s ipv4_start_node;
-  MMDB_metadata_s metadata;
-} MMDB_s;
-
-typedef  char * pchar;
-
-MMDB_lookup_result_s MMDB_lookup_string(MMDB_s *const mmdb,   const char *const ipstr, int *const gai_error,int *const mmdb_error);
-int MMDB_open(const char *const filename, uint32_t flags, MMDB_s *const mmdb);
-int MMDB_aget_value(MMDB_entry_s *const start,  MMDB_entry_data_s *const entry_data,  const char *const *const path);
-char *MMDB_strerror(int error_code);
-int MMDB_get_entry_data_list(MMDB_entry_s *start, MMDB_entry_data_list_s **const entry_data_list);
 ]]
 
--- error codes 
--- https://github.com/maxmind/libmaxminddb/blob/master/include/maxminddb.h#L66
-local MMDB_SUCCESS                                  =   0
-local MMDB_FILE_OPEN_ERROR                          =   1
-local MMDB_CORRUPT_SEARCH_TREE_ERROR                =   2
-local MMDB_INVALID_METADATA_ERROR                   =   3
-local MMDB_IO_ERROR                                 =   4
-local MMDB_OUT_OF_MEMORY_ERROR                      =   5
-local MMDB_UNKNOWN_DATABASE_FORMAT_ERROR            =   6
-local MMDB_INVALID_DATA_ERROR                       =   7
-local MMDB_INVALID_LOOKUP_PATH_ERROR                =   8
-local MMDB_LOOKUP_PATH_DOES_NOT_MATCH_DATA_ERROR    =   9
-local MMDB_INVALID_NODE_NUMBER_ERROR                =   10
-local MMDB_IPV6_LOOKUP_IN_IPV4_DATABASE_ERROR       =   11
+-- fields
+-- https://github.com/chrislim2888/IP2Location-C-Library/blob/master/libIP2Location/IP2Location.h#L72
+local IP2LOCATION_COUNTRYSHORT         = 0x00001
+local IP2LOCATION_COUNTRYLONG          = 0x00002
+local IP2LOCATION_REGION               = 0x00004
+local IP2LOCATION_CITY                 = 0x00008
+local IP2LOCATION_ISP                  = 0x00010
+local IP2LOCATION_LATITUDE             = 0x00020
+local IP2LOCATION_LONGITUDE            = 0x00040
+local IP2LOCATION_DOMAIN_              = 0x00080 -- DOMAIN is a math.h macro
+local IP2LOCATION_ZIPCODE              = 0x00100
+local IP2LOCATION_TIMEZONE             = 0x00200
+local IP2LOCATION_NETSPEED             = 0x00400
+local IP2LOCATION_IDDCODE              = 0x00800
+local IP2LOCATION_AREACODE             = 0x01000
+local IP2LOCATION_WEATHERSTATIONCODE   = 0x02000
+local IP2LOCATION_WEATHERSTATIONNAME   = 0x04000
+local IP2LOCATION_MCC                  = 0x08000
+local IP2LOCATION_MNC                  = 0x10000
+local IP2LOCATION_MOBILEBRAND          = 0x20000
+local IP2LOCATION_ELEVATION            = 0x40000
+local IP2LOCATION_USAGETYPE            = 0x80000
 
--- data type
--- https://github.com/maxmind/libmaxminddb/blob/master/include/maxminddb.h#L40
-local MMDB_DATA_TYPE_EXTENDED                       =   0
-local MMDB_DATA_TYPE_POINTER                        =   1
-local MMDB_DATA_TYPE_UTF8_STRING                    =   2
-local MMDB_DATA_TYPE_DOUBLE                         =   3
-local MMDB_DATA_TYPE_BYTES                          =   4
-local MMDB_DATA_TYPE_UINT16                         =   5
-local MMDB_DATA_TYPE_UINT32                         =   6
-local MMDB_DATA_TYPE_MAP                            =   7
-local MMDB_DATA_TYPE_INT32                          =   8
-local MMDB_DATA_TYPE_UINT64                         =   9
-local MMDB_DATA_TYPE_UINT128                        =   10
-local MMDB_DATA_TYPE_ARRAY                          =   11
-local MMDB_DATA_TYPE_CONTAINER                      =   12
-local MMDB_DATA_TYPE_END_MARKER                     =   13
-local MMDB_DATA_TYPE_BOOLEAN                        =   14
-local MMDB_DATA_TYPE_FLOAT                          =   15
-
--- you should install the libmaxminddb to your system
-local maxm     = ffi.load('libmaxminddb.so')
---https://github.com/maxmind/libmaxminddb
+local IP2LOCATION_ALL = 0xfffff
 
 
+-- you should install the libIP2Location to your system
+local IP2LOCATION = ffi.load('libIP2Location.so')
+-- https://github.com/chrislim2888/IP2Location-C-Library
 
-function _M.new(maxmind_country_geoip2_file)
+-- access_type
+_M.IP2LOCATION_FILE_IO = IP2LOCATION.IP2LOCATION_FILE_IO
+_M.IP2LOCATION_CACHE_MEMORY = IP2LOCATION.IP2LOCATION_CACHE_MEMORY
+-- access_type: default
+_M.IP2LOCATION_SHARED_MEMORY = IP2LOCATION.IP2LOCATION_SHARED_MEMORY
+
+
+-- returns a ip2location object. free it with close call
+function _M.new(ip2location_country_geolite2_file, access_type)
    
-  local mmdb = ffi_new('MMDB_s') 
-  local file_name_ip2 = ffi_new('char[?]',#maxmind_country_geoip2_file,maxmind_country_geoip2_file)
-  local maxmind_reday = maxm.MMDB_open(file_name_ip2,0,mmdb)
-
-  return setmetatable({ mmdb=mmdb }, mt);
+  local file_name_ip2 = ffi_new('char[?]',#ip2location_country_geolite2_file,ip2location_country_geolite2_file)
+  local ip2location = IP2LOCATION.IP2Location_open(file_name_ip2)
+  if not ip2location then
+      ngx_log(ngx_ERR, "can not open database file: ", ip2location_country_geolite2_file)
+      return nil, "can not open database file: " .. ip2location_country_geolite2_file
+  end
+  if nil == access_type then
+    access_type = _M.IP2LOCATION_SHARED_MEMORY
+  end
+  if IP2LOCATION.IP2Location_open_mem(ip2location, access_type) == -1 then
+    IP2LOCATION.IP2Location_close(ip2location)
+    ngx_log(ngx_ERR, "can not open database file: ", ip2location_country_geolite2_file, ", access type: ", access_type)
+    return nil, "can not open database file: " .. ip2location_country_geolite2_file .. ", access type: " .. access_type
+  end
+  return setmetatable({ ip2location=ip2location }, mt)
 end
 
--- https://github.com/maxmind/libmaxminddb/blob/master/src/maxminddb.c#L1938 
--- LOCAL MMDB_entry_data_list_s *dump_entry_data_list( FILE *stream, MMDB_entry_data_list_s *entry_data_list, int indent, int *status)
-local function _dump_entry_data_list(entry_data_list,status,resultTab)
-
-  if not entry_data_list then
-    return nil,nil,resultTab
-  end
-  
-  if not resultTab then
-    resultTab = {}
-  end
-  
-  
-  local entry_data_item = entry_data_list[0].entry_data
-  local data_type = entry_data_item.type
-  local data_size = entry_data_item.data_size
-  
-  if data_type == MMDB_DATA_TYPE_MAP then
-    table.insert(resultTab,"{")
-    
-    local flag = false
-    local size = entry_data_item.data_size
-    
-    entry_data_list = entry_data_list[0].next
-    
-    while(size > 0 and entry_data_list)
-    do 
-      entry_data_item = entry_data_list[0].entry_data
-      data_type = entry_data_item.type
-      data_size = entry_data_item.data_size
-      
-      if MMDB_DATA_TYPE_UTF8_STRING  ~= data_type then
-        return nil,MMDB_INVALID_DATA_ERROR,resultTab
-      end
-      
-      local val = ffi_str(entry_data_item.utf8_string,data_size)
-
-      if not val then
-        return nil,MMDB_OUT_OF_MEMORY_ERROR,resultTab
-      end
-      
-      -- if latest str is { ,dont append `,`
-      table.insert(resultTab,(flag and ',"%s":' or '"%s":'):format(val))
-      
-      flag = true
-      
-      entry_data_list = entry_data_list[0].next
-      entry_data_list,status,resultTab = _dump_entry_data_list(entry_data_list,status,resultTab)
-      
-      if status ~= MMDB_SUCCESS then
-        return nil,nil,resultTab
-      end
-      
-      size = size -1 
-    end
-    table.insert(resultTab,"}")
-    
-
-  elseif entry_data_list[0].entry_data.type == MMDB_DATA_TYPE_ARRAY then
-    local size = entry_data_list[0].entry_data.data_size
-
-    table.insert(resultTab,"[")
-    
-    entry_data_list = entry_data_list[0].next
-    
-    while(size >0 and entry_data_list)
-    do
-      entry_data_list,status,resultTab = _dump_entry_data_list(entry_data_list,status,resultTab)
-      
-      if status ~= MMDB_SUCCESS then
-        return nil,nil,resultTab
-      end
-      
-      size = size -1 
-    end
-    table.insert(resultTab,"]")
-
-    
-  else
-    entry_data_item = entry_data_list[0].entry_data
-    data_type = entry_data_item.type
-    data_size = entry_data_item.data_size
-    
-    local val
-    -- string type "key":"val"
-    -- other type "key":val
-    -- default other type
-    local fmt="%s"
-    if data_type == MMDB_DATA_TYPE_UTF8_STRING then
-      val = ffi_str(entry_data_item.utf8_string,data_size)
-      fmt='"%s"'
-      if not val then
-        status = MMDB_OUT_OF_MEMORY_ERROR
-        return nil,status,resultTab
-      end
-    elseif data_type == MMDB_DATA_TYPE_BYTES then
-      val = ffi_str(ffi_cast('char * ',entry_data_item.bytes),data_size)
-      fmt='"%s"'
-      if not val then
-        status = MMDB_OUT_OF_MEMORY_ERROR
-        return nil,status,resultTab
-      end
-    elseif data_type == MMDB_DATA_TYPE_DOUBLE then
-      val = entry_data_item.double_value
-    elseif data_type == MMDB_DATA_TYPE_FLOAT then
-      val = entry_data_item.float_value
-    elseif data_type == MMDB_DATA_TYPE_UINT16 then
-      val = entry_data_item.uint16
-    elseif data_type == MMDB_DATA_TYPE_UINT32 then
-      val = entry_data_item.uint32
-    elseif data_type == MMDB_DATA_TYPE_BOOLEAN then
-      val = entry_data_item.boolean == 1
-    elseif data_type == MMDB_DATA_TYPE_UINT64 then
-      val = entry_data_item.uint64
-    elseif data_type == MMDB_DATA_TYPE_INT32 then
-      val = entry_data_item.int32
-    else
-      return nil,MMDB_INVALID_DATA_ERROR,resultTab
-    end
-    
-    table.insert(resultTab,(fmt):format(val))
-    entry_data_list = entry_data_list[0].next
-  end
-  status = MMDB_SUCCESS
-  return entry_data_list,status,resultTab
+function _M.close()
+  IP2LOCATION.IP2Location_close(self.ip2location)
+  IP2LOCATION.IP2Location_DB_del_shm()
 end
 
-function _M:lookup(ip)
+-- returns a record object. free it with close_lookup call
+function _M.lookup(ip)
+  local record = IP2LOCATION.IP2Location_get_all(self.ip2location, ip)
 
-  local ip_str = ffi_cast('const char *',ffi_new('char[?]',#ip+1,ip))
-  local gai_error = ffi_new('int[1]')
-  local mmdb_error = ffi_new('int[1]')
-
-  local result = maxm.MMDB_lookup_string(self.mmdb,ip_str,gai_error,mmdb_error)
-
-  if mmdb_error[0] ~= MMDB_SUCCESS then
-    return nil,'fail when lookup'
-  end
-
-  if gai_error[0] ~= MMDB_SUCCESS then
-    return nil,'ga error'
-  end
-
-  if true ~= result.found_entry then
-    ngx_log(ngx_ERR, "stream lua mmdb lookup: entry not found")
-    return nil,'not found'
-  end
-
-  local entry_data_list = ffi_cast('MMDB_entry_data_list_s **const',ffi_new("MMDB_entry_data_list_s"))
-  
-  local mmdb_error = maxm.MMDB_get_entry_data_list(result.entry,entry_data_list)
-  
-  local _,status,resultTap = _dump_entry_data_list(entry_data_list)
-  
-  if status ~= MMDB_SUCCESS then
-    return nil,'no data'
+  if not record then
+    return nil, "no result found"
   end
   
-  return json_decode(table.concat(resultTab)),nil
+  return setmetatable({ record=record }, mt2), nil
+  --return json_decode(table.concat(record)),nil
 end
- 
--- https://www.maxmind.com/en/geoip2-databases  you should download  the mmdb file from maxmind
- 
-return _M;
+
+function _M2.close()
+  IP2LOCATION.IP2Location_free_record(self.record)
+end
+
+return _M
