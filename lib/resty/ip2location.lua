@@ -17,7 +17,7 @@ local ffi_cast            = ffi.cast
 
 -- for ip2location handle
 local _M    ={}
-_M._VERSION = '0.0.3'
+_M._VERSION = '0.0.4'
 local mt = { __index = _M }
 
 -- for record
@@ -180,7 +180,7 @@ _M.IP2LOCATION_SHARED_MEMORY = IP2LOCATION.IP2LOCATION_SHARED_MEMORY
 function _M.new(ip2location_country_geolite2_file, access_type)
    
   local file_name_ip2 = ffi_new('char[?]',#ip2location_country_geolite2_file,ip2location_country_geolite2_file)
-  local ip2location = IP2LOCATION.IP2Location_open(file_name_ip2)
+  local ip2location = IP2LOCATION.IP2Location_open(ffi_cast('char * ', file_name_ip2))
   if not ip2location then
       ngx_log(ngx_ERR, "can not open database file: ", ip2location_country_geolite2_file)
       return nil, "can not open database file: " .. ip2location_country_geolite2_file
@@ -203,7 +203,7 @@ end
 
 -- returns a record object. free it with close_lookup call
 function _M:lookup(ip)
-  local record = IP2LOCATION.IP2Location_get_all(self.ip2location, ip)
+  local record = IP2LOCATION.IP2Location_get_all(self.ip2location, ffi_cast('char * ', ip))
 
   if not record then
     return nil, "no result found"
