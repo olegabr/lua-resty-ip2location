@@ -26,6 +26,10 @@ local mt2 = { __index = _M2 }
 
 ffi.cdef[[
 
+/* http://lua-users.org/lists/lua-l/2011-11/msg00732.html */
+struct _IO_FILE;
+typedef struct _IO_FILE FILE;
+
 /* https://github.com/chrislim2888/IP2Location-C-Library/blob/master/libIP2Location/IP2Loc_DBInterface.h#L17 */
 enum IP2Location_mem_type
 {
