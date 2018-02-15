@@ -17,7 +17,7 @@ local ffi_cast            = ffi.cast
 
 -- for ip2location handle
 local _M    ={}
-_M._VERSION = '0.01'
+_M._VERSION = '0.0.1'
 local mt = { __index = _M }
 
 -- for record
